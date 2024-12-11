@@ -1,4 +1,8 @@
 package blockchain
 
-type block struct {
+type Block struct {
+	TransactionHash string
+	PreviousHash    string
+	PreviousBlock   *Block
+	Data            string
 }

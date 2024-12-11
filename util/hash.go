@@ -6,7 +6,7 @@ import (
 	"fmt"
 )
 
-func HashEverything(input interface{}) string {
+func GenerateHash(input interface{}) string {
 	inputString := fmt.Sprintf("%v", input)
 	hash1 := sha256.New()
 	hash1.Write([]byte(inputString))
