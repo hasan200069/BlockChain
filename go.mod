@@ -2,9 +2,13 @@ module awesomeProject
 
 go 1.23.4
 
-require github.com/ipfs/go-ipfs-api v0.7.0
+require (
+	github.com/go-sql-driver/mysql v1.8.1
+	github.com/ipfs/go-ipfs-api v0.7.0
+)
 
 require (
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/crackcomm/go-gitignore v0.0.0-20170627025303-887ab5e44cc3 // indirect
