@@ -14,8 +14,7 @@ type IPFSTable struct {
 }
 
 func insertIPFSTable(db *sql.DB, table IPFSTable) error {
-	query := `INSERT INTO ipfs_table (algorithm_name, algorithm_file_cid, dataset_cid) 
-			VALUES (?, ?, ?)`
+	query := "INSERT INTO ipfs_table (algorithm_name, algorithm_file_cid, dataset_cid) VALUES (?, ?, ?)"
 	_, err := db.Exec(query, table.AlgorithmName, table.AlgorithmFileCid, table.DatasetCid)
 	return err
 }
@@ -33,8 +32,7 @@ func createConnection() (*sql.DB, error) {
 }
 
 func getIPFSTableByName(db *sql.DB, algorithmName string) (*IPFSTable, error) {
-	query := `SELECT algorithm_name, algorithm_file_cid, dataset_cid 
-			FROM ipfs_table WHERE algorithm_name = ?`
+	query := "SELECT algorithm_name, algorithm_file_cid, dataset_cid FROM ipfs_table WHERE algorithm_name = ?"
 	row := db.QueryRow(query, algorithmName)
 
 	var table IPFSTable

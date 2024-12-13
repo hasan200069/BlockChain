@@ -5,16 +5,15 @@ import (
 )
 
 type Transaction struct {
-	transactionID    string
-	timestamp        time.Time
-	sender           string
-	receiver         string
-	algorithm        string
-	algorithmFileCid string
-	datasetCID       string
-	resultHash       string
-	signatures       []string
-	amount           int
+	transactionID string
+	timestamp     time.Time
+	sender        string
+	receiver      string
+	algorithm     string
+	resultHash    string
+	signatures    []string
+	amount        int
+	actualoutput  string
 }
 
 func (t *Transaction) GetTransactionID() string {
@@ -40,6 +39,7 @@ func (t *Transaction) GetReceiver() string {
 func (t *Transaction) GetAlgorithm() string {
 	return t.algorithm
 }
+
 func (t *Transaction) GetResultHash() string {
 	return t.resultHash
 }
@@ -47,8 +47,11 @@ func (t *Transaction) GetResultHash() string {
 func (t *Transaction) GetSignatures() []string {
 	return t.signatures
 }
+func (t *Transaction) GetActualOutput() string {
+	return t.actualoutput
+}
 
-func CreateTransaction(transactionID, sender, receiver, algorithm, algorithmFileCid, datasetCID, resultHash string, signatures []string) *Transaction {
+func CreateTransaction(transactionID, sender, receiver, algorithm, resultHash string, signatures []string, actual string, amount1 int) *Transaction {
 	return &Transaction{
 		transactionID: transactionID,
 		timestamp:     time.Now(),
@@ -57,5 +60,7 @@ func CreateTransaction(transactionID, sender, receiver, algorithm, algorithmFile
 		algorithm:     algorithm,
 		resultHash:    resultHash,
 		signatures:    signatures,
+		amount:        amount1,
+		actualoutput:  actual,
 	}
 }
