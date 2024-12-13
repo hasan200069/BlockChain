@@ -10,11 +10,10 @@ type Transaction struct {
 	sender           string
 	receiver         string
 	algorithm        string
-	algorithmFileCid string
-	datasetCID       string
 	resultHash       string
 	signatures       []string
 	amount           int
+	actualoutput     string
 }
 
 func (t *Transaction) GetTransactionID() string {
@@ -41,13 +40,6 @@ func (t *Transaction) GetAlgorithm() string {
 	return t.algorithm
 }
 
-func (t *Transaction) GetAlgorithmFileCid() string {
-	return t.algorithmFileCid
-}
-
-func (t *Transaction) GetDatasetCID() string {
-	return t.datasetCID
-}
 
 func (t *Transaction) GetResultHash() string {
 	return t.resultHash
@@ -64,8 +56,6 @@ func CreateTransaction(transactionID, sender, receiver, algorithm, algorithmFile
 		sender:           sender,
 		receiver:         receiver,
 		algorithm:        algorithm,
-		algorithmFileCid: algorithmFileCid,
-		datasetCID:       datasetCID,
 		resultHash:       resultHash,
 		signatures:       signatures,
 	}

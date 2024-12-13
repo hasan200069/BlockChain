@@ -1,8 +1,14 @@
 package blockchain
 
+
+type Data struct {
+	Transactions []Transaction
+}
+
 type Block struct {
-	TransactionHash string
-	PreviousHash    string
-	PreviousBlock   *Block
-	Data            string
+	PreviousHash string
+	Timestamp    time.Time
+	Nonce        int
+	Data         Data
+	Hash         string
 }
