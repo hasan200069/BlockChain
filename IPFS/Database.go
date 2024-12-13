@@ -13,14 +13,14 @@ type IPFSTable struct {
 	DatasetCid       string
 }
 
-func insertIPFSTable(db *sql.DB, table IPFSTable) error {
+func InsertIPFSTable(db *sql.DB, table IPFSTable) error {
 	query := "INSERT INTO ipfs_table (algorithm_name, algorithm_file_cid, dataset_cid) VALUES (?, ?, ?)"
 	_, err := db.Exec(query, table.AlgorithmName, table.AlgorithmFileCid, table.DatasetCid)
 	return err
 }
 
-func createConnection() (*sql.DB, error) {
-	dsn := "user:password@tcp(localhost:3306)/database_name"
+func CreateConnection() (*sql.DB, error) {
+	dsn := "root:1234@tcp(localhost:3306)/IPFS"
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("could not open database: %v", err)
@@ -31,7 +31,7 @@ func createConnection() (*sql.DB, error) {
 	return db, nil
 }
 
-func getIPFSTableByName(db *sql.DB, algorithmName string) (*IPFSTable, error) {
+func GetIPFSTableByName(db *sql.DB, algorithmName string) (*IPFSTable, error) {
 	query := "SELECT algorithm_name, algorithm_file_cid, dataset_cid FROM ipfs_table WHERE algorithm_name = ?"
 	row := db.QueryRow(query, algorithmName)
 

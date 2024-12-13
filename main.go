@@ -1,7 +1,11 @@
 package main
 
 import (
+	"awesomeProject/IPFS"
 	"awesomeProject/blockchain"
+	"database/sql"
+	"fmt"
+	"log"
 )
 
 func main() {
@@ -19,4 +23,32 @@ func main() {
 	bc.CreateNewBlock(transactions, 1)
 	bc.CreateNewBlock(transactions, 2)
 	bc.PrintChain()
+	db, err := IPFS.CreateConnection()
+	if err != nil {
+		log.Fatalf("Error creating connection: %v", err)
+	}
+	defer func(db *sql.DB) {
+		err := db.Close()
+		if err != nil {
+			log.Fatalf("Error closing db: %v", err)
+		}
+	}(db)
+	table := IPFS.IPFSTable{
+		AlgorithmName:    "Example Algorithm",
+		AlgorithmFileCid: "QmExampleCid1",
+		DatasetCid:       "QmExampleCid2",
+	}
+	err = IPFS.InsertIPFSTable(db, table)
+	if err != nil {
+		log.Fatalf("Error inserting data into IPFS table: %v", err)
+	} else {
+		fmt.Println("Record inserted successfully!")
+	}
+	algorithmName := "Example Algorithm"
+	result, err := IPFS.GetIPFSTableByName(db, algorithmName)
+	if err != nil {
+		log.Fatalf("Error retrieving data: %v", err)
+	} else {
+		fmt.Printf("Retrieved Record: %+v\n", result)
+	}
 }
