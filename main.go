@@ -33,22 +33,7 @@ func main() {
 			log.Fatalf("Error closing db: %v", err)
 		}
 	}(db)
-	table := IPFS.IPFSTable{
-		AlgorithmName:    "Example Algorithm",
-		AlgorithmFileCid: "QmExampleCid1",
-		DatasetCid:       "QmExampleCid2",
-	}
-	err = IPFS.InsertIPFSTable(db, table)
-	if err != nil {
-		log.Fatalf("Error inserting data into IPFS table: %v", err)
-	} else {
-		fmt.Println("Record inserted successfully!")
-	}
-	algorithmName := "Example Algorithm"
-	result, err := IPFS.GetIPFSTableByName(db, algorithmName)
-	if err != nil {
-		log.Fatalf("Error retrieving data: %v", err)
-	} else {
-		fmt.Printf("Retrieved Record: %+v\n", result)
-	}
+
+	newJSON, _ := bc.ToJSON()
+	fmt.Println(string(newJSON))
 }

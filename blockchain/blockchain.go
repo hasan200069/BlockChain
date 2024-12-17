@@ -3,7 +3,9 @@ package blockchain
 import (
 	"awesomeProject/util"
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -68,4 +70,32 @@ func (bc *Blockchain) PrintChain() {
 			fmt.Printf("  - %s\n", transaction)
 		}
 	}
+}
+
+func (bc *Blockchain) ToJSON() ([]byte, error) {
+	data, err := json.MarshalIndent(bc, "", "  ") // Marshals the blockchain with indentation for readability
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
+}
+
+func (bc *Blockchain) SaveToFile(filename string) error {
+	data, err := bc.ToJSON()
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(filename, data, 0644)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bc *Blockchain) LoadFromJSON(data []byte) error {
+	err := json.Unmarshal(data, bc)
+	if err != nil {
+		return err
+	}
+	return nil
 }
