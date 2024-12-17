@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"awesomeProject/util"
+	"bytes"
 	"fmt"
 	"time"
 )
@@ -10,26 +11,34 @@ type Blockchain struct {
 	Blocks []*Block
 }
 
-func (bc *Blockchain) getPreviousHash() string {
-	var previousHash string
-	if len(bc.Blocks) > 0 {
-		previousHash = bc.Blocks[len(bc.Blocks)-1].getPreviousHash()
+const Difficulty = 4
+
+func (b *Block) MineBlock(difficulty int) {
+	prefix := bytes.Repeat([]byte("0"), difficulty)
+	for {
+		b.Hash = util.GenerateHash(b)
+		if bytes.HasPrefix([]byte(b.Hash), prefix) {
+			break
+		}
+		b.Nonce++
 	}
-
-	return previousHash
-
 }
 
-func (bc *Blockchain) CreateNewBlock(transactions []Transaction, nonce int) *Block {
+func (bc *Blockchain) getPreviousHash() string {
+	if len(bc.Blocks) > 0 {
+		return bc.Blocks[len(bc.Blocks)-1].getPreviousHash()
+	}
+	return ""
+}
 
-	var previousHash = bc.getPreviousHash()
+func (bc *Blockchain) CreateNewBlock(transactions []Transaction) *Block {
+	previousHash := bc.getPreviousHash()
 	newBlock := &Block{
 		PreviousHash: previousHash,
 		Timestamp:    time.Now(),
-		Nonce:        nonce,
 		Data:         Data{Transactions: transactions},
 	}
-	newBlock.Hash = util.GenerateHash(newBlock)
+	newBlock.MineBlock(Difficulty)
 	bc.Blocks = append(bc.Blocks, newBlock)
 	return newBlock
 }

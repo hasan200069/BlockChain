@@ -20,8 +20,8 @@ func main() {
 	amount := 100
 	tx := blockchain.CreateTransaction(transactionID, sender, receiver, algorithm, resultHash, signatures, actualOutput, amount)
 	transactions := []blockchain.Transaction{*tx}
-	bc.CreateNewBlock(transactions, 1)
-	bc.CreateNewBlock(transactions, 2)
+	bc.CreateNewBlock(transactions)
+	bc.CreateNewBlock(transactions)
 	bc.PrintChain()
 	db, err := IPFS.CreateConnection()
 	if err != nil {
