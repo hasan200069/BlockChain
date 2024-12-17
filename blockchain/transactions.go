@@ -5,62 +5,65 @@ import (
 )
 
 type Transaction struct {
-	transactionID string
-	timestamp     time.Time
-	sender        string
-	receiver      string
-	algorithm     string
-	resultHash    string
-	signatures    []string
-	amount        int
-	actualoutput  string
+	TransactionID string    `json:"transaction_id"`
+	Timestamp     time.Time `json:"timestamp"`
+	Sender        string    `json:"sender"`
+	Receiver      string    `json:"receiver"`
+	Algorithm     string    `json:"algorithm"`
+	ResultHash    string    `json:"result_hash"`
+	Signatures    []string  `json:"signatures"`
+	Amount        int       `json:"amount"`
+	ActualOutput  string    `json:"actual_output"`
 }
 
+// Getter Methods
 func (t *Transaction) GetTransactionID() string {
-	return t.transactionID
+	return t.TransactionID
 }
 
 func (t *Transaction) GetTransactionAmount() int {
-	return t.amount
+	return t.Amount
 }
 
 func (t *Transaction) GetTimestamp() time.Time {
-	return t.timestamp
+	return t.Timestamp
 }
 
 func (t *Transaction) GetSender() string {
-	return t.sender
+	return t.Sender
 }
 
 func (t *Transaction) GetReceiver() string {
-	return t.receiver
+	return t.Receiver
 }
 
 func (t *Transaction) GetAlgorithm() string {
-	return t.algorithm
+	return t.Algorithm
 }
 
 func (t *Transaction) GetResultHash() string {
-	return t.resultHash
+	return t.ResultHash
 }
 
 func (t *Transaction) GetSignatures() []string {
-	return t.signatures
-}
-func (t *Transaction) GetActualOutput() string {
-	return t.actualoutput
+	return t.Signatures
 }
 
+func (t *Transaction) GetActualOutput() string {
+	return t.ActualOutput
+}
+
+// Constructor Method
 func CreateTransaction(transactionID, sender, receiver, algorithm, resultHash string, signatures []string, actual string, amount1 int) *Transaction {
 	return &Transaction{
-		transactionID: transactionID,
-		timestamp:     time.Now(),
-		sender:        sender,
-		receiver:      receiver,
-		algorithm:     algorithm,
-		resultHash:    resultHash,
-		signatures:    signatures,
-		amount:        amount1,
-		actualoutput:  actual,
+		TransactionID: transactionID,
+		Timestamp:     time.Now(),
+		Sender:        sender,
+		Receiver:      receiver,
+		Algorithm:     algorithm,
+		ResultHash:    resultHash,
+		Signatures:    signatures,
+		Amount:        amount1,
+		ActualOutput:  actual,
 	}
 }
