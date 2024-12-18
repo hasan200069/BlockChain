@@ -6,6 +6,7 @@ import (
     "awesomeProject/blockchain"
     "flag"
     "fmt"
+    "net/http"
     "log"
     "os"
     "os/signal"
@@ -46,21 +47,35 @@ func main() {
         }
     }()
 
-    // If this is not the bootstrap node, connect to the network
-    if *bootstrapNode != "" {
-        req := fmt.Sprintf("http://%s/register-peer", *bootstrapNode)
-        fmt.Printf("Connecting to bootstrap node at: %s\n", req)
-        
-        // Validate and sync blockchain
-        err = consensusValidator.HandleBlockchainSync(*nodeID, blockchainJSON)
-        if err != nil {
-            log.Printf("Initial consensus validation failed: %v", err)
-        }
-        
-        network.FloodBlockchain()
-    }
+    // if not the bootstrap node, connect to the network
+	if *bootstrapNode != "" {
+    		req := fmt.Sprintf("http://%s/register-peer", *bootstrapNode)
+    		fmt.Printf("Connecting to bootstrap node at: %s\n", req)
     
-    // Periodically create new transactions and test consensus
+                //almost like handshaking mechanism for peers to join network
+    		// HTTP request  added to register with bootstrap node
+    		client := &http.Client{Timeout: 10 * time.Second}
+    		registerReq, err := http.NewRequest("POST", req, nil)
+    		if err != nil {
+        		log.Printf("Error creating register request: %v", err)
+    		} else {
+        		registerReq.Header.Set("X-Peer-Address", fmt.Sprintf("localhost:%d", *port))
+        		_, err = client.Do(registerReq)
+        		if err != nil {
+            			log.Printf("Error registering with bootstrap node: %v", err)
+       	 		}
+    		}
+    
+    		// Validate and sync blockchain
+    		err = consensusValidator.HandleBlockchainSync(*nodeID, blockchainJSON)
+    		if err != nil {
+        		log.Printf("Initial consensus validation failed: %v", err)
+    		}
+    
+    		network.FloodBlockchain()
+	}
+    
+    // periodically creates new transactions and test consensus
     go func() {
         for {
             time.Sleep(30 * time.Second) // Create new block every 30 seconds
