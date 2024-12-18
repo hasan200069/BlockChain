@@ -33,16 +33,18 @@ func (bc *Blockchain) getPreviousHash() string {
 	return ""
 }
 
-func (bc *Blockchain) CreateNewBlock(transactions []Transaction) *Block {
-	previousHash := bc.getPreviousHash()
-	newBlock := &Block{
-		PreviousHash: previousHash,
-		Timestamp:    time.Now(),
-		Data:         Data{Transactions: transactions},
-	}
-	newBlock.MineBlock(Difficulty)
-	bc.Blocks = append(bc.Blocks, newBlock)
-	return newBlock
+
+func (bc *Blockchain) CreateNewBlock(transactions []*Transaction) *Block {
+    previousHash := bc.getPreviousHash()
+    newBlock := &Block{
+        PreviousHash: previousHash,
+        Timestamp:    time.Now(),
+        Data:         Data{Transactions: transactions},
+        Nonce:        0,
+    }
+    newBlock.MineBlock(Difficulty)
+    bc.Blocks = append(bc.Blocks, newBlock)
+    return newBlock
 }
 
 func (bc *Blockchain) GetLastBlock() *Block {
