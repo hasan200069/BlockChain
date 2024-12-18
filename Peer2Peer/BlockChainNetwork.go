@@ -1,6 +1,7 @@
 package Peer2Peer
 
 import (
+	"awesomeProject/Consensus"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -16,12 +17,16 @@ type BlockchainNetwork struct {
 	peerManager *PeerManager
 	blockchain  []byte
 	mu          sync.Mutex
+	consensusValidator *Consensus.NetworkBlockchainValidator  //field added with consensus file
+        nodeID      string
 }
 
 func NewBlockchainNetwork(localPort int, initialBlockchain []byte) *BlockchainNetwork {
 	return &BlockchainNetwork{
 		peerManager: NewPeerManager(localPort),
 		blockchain:  initialBlockchain,
+		consensusValidator: Consensus.NewNetworkBlockchainValidator(4),  // using difficulty 4
+        nodeID: fmt.Sprintf("node-%d", localPort),
 	}
 }
 
@@ -76,27 +81,29 @@ func (bn *BlockchainNetwork) StartServer(listenAddress string) error {
 }
 
 func (bn *BlockchainNetwork) receiveBlockchainHandler(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
 
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		http.Error(w, "Error reading request body", http.StatusBadRequest)
-		return
-	}
+    body, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        http.Error(w, "Error reading request body", http.StatusBadRequest)
+        return
+    }
 
-	if !bn.validateBlockchain(body) {
-		http.Error(w, "Invalid blockchain", http.StatusBadRequest)
-		return
-	}
+    // Add consensus validation
+    err = bn.consensusValidator.HandleBlockchainSync(bn.nodeID, body)
+    if err != nil {
+        http.Error(w, fmt.Sprintf("Consensus validation failed: %v", err), http.StatusBadRequest)
+        return
+    }
 
-	bn.mu.Lock()
-	bn.blockchain = body
-	bn.mu.Unlock()
+    bn.mu.Lock()
+    bn.blockchain = body
+    bn.mu.Unlock()
 
-	w.WriteHeader(http.StatusOK)
+    w.WriteHeader(http.StatusOK)
 }
 
 func (bn *BlockchainNetwork) registerPeerHandler(w http.ResponseWriter, r *http.Request) {

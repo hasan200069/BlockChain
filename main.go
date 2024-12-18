@@ -42,6 +42,7 @@ package main
 import (
     //"awesomeProject/IPFS"
     //"encoding/json"
+    "awesomeProject/Consensus"
     "awesomeProject/Peer2Peer"
     "awesomeProject/blockchain"
     "flag"
@@ -52,10 +53,15 @@ import (
 )
 
 func main() {
-    // Add command line flags for node configuration
     port := flag.Int("port", 8000, "Port to listen on")
     bootstrapNode := flag.String("bootstrap", "", "Bootstrap node address")
+    nodeID := flag.String("id", "", "Node ID")
     flag.Parse()
+    
+    // If no node ID provided, generate one
+    if *nodeID == "" {
+        *nodeID = fmt.Sprintf("node-%d", *port)
+    }
 
     // Initialize blockchain
     bc := &blockchain.Blockchain{}
@@ -84,15 +90,15 @@ func main() {
         fmt.Printf("Connecting to bootstrap node at: %s\n", req)
         network.FloodBlockchain()
     }
-
-    // Create your example transaction
+    
+    //exmaple transaction
     tx := blockchain.CreateTransaction(
-        "tx12345",
-        "Alice",
-        "Bob",
+        fmt.Sprintf("tx-%s-%d", *nodeID, len(bc.Blocks)),
+        *nodeID,
+        "receiver",
         "SHA-256",
-        "abc123def456",
-        []string{"sig1", "sig2", "sig3"},
+        "result-hash",
+        []string{"sig1"},
         "Successful transaction",
         100,
     )
@@ -101,7 +107,7 @@ func main() {
     bc.CreateNewBlock([]blockchain.Transaction{*tx})
     network.FloodBlockchain()
 
-    fmt.Printf("Node running on port %d\n", *port)
+     fmt.Printf("Node %s running on port %d\n", *nodeID, *port)
     if *bootstrapNode != "" {
         fmt.Printf("Connected to bootstrap node: %s\n", *bootstrapNode)
     } else {
