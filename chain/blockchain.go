@@ -1,4 +1,4 @@
-package blockchain
+package chain
 
 import (
 	"awesomeProject/util"
@@ -73,7 +73,7 @@ func (bc *Blockchain) PrintChain() {
 }
 
 func (bc *Blockchain) ToJSON() ([]byte, error) {
-	data, err := json.MarshalIndent(bc, "", "  ") // Marshals the blockchain with indentation for readability
+	data, err := json.MarshalIndent(bc, "", "  ") // Marshals the chain with indentation for readability
 	if err != nil {
 		return nil, err
 	}
@@ -97,5 +97,23 @@ func (bc *Blockchain) LoadFromJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (bc *Blockchain) ToNetworkBytes() ([]byte, error) {
+	data, err := json.Marshal(bc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert blockchain to network bytes: %v", err)
+	}
+	return data, nil
+}
+
+func (bc *Blockchain) FromNetworkBytes(data []byte) error {
+	var newBlockchain Blockchain
+	err := json.Unmarshal(data, &newBlockchain)
+	if err != nil {
+		return fmt.Errorf("failed to convert network bytes to blockchain: %v", err)
+	}
+	*bc = newBlockchain
 	return nil
 }

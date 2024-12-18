@@ -2,14 +2,14 @@ package main
 
 import (
 	"awesomeProject/IPFS"
-	"awesomeProject/blockchain"
+	"awesomeProject/chain"
 	"database/sql"
 	"fmt"
 	"log"
 )
 
 func main() {
-	bc := &blockchain.Blockchain{}
+	bc := &chain.Blockchain{}
 	transactionID := "tx12345"
 	sender := "Alice"
 	receiver := "Bob"
@@ -18,8 +18,8 @@ func main() {
 	signatures := []string{"sig1", "sig2", "sig3"}
 	actualOutput := "Successful transaction"
 	amount := 100
-	tx := blockchain.CreateTransaction(transactionID, sender, receiver, algorithm, resultHash, signatures, actualOutput, amount)
-	transactions := []blockchain.Transaction{*tx}
+	tx := chain.CreateTransaction(transactionID, sender, receiver, algorithm, resultHash, signatures, actualOutput, amount)
+	transactions := []chain.Transaction{*tx}
 	bc.CreateNewBlock(transactions)
 	bc.CreateNewBlock(transactions)
 	bc.PrintChain()

@@ -52,14 +52,14 @@ func (bn *BlockchainNetwork) sendBlockchainToPeer(peerAddress string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		log.Printf("Error sending blockchain to %s: %v", peerAddress, err)
+		log.Printf("Error sending chain to %s: %v", peerAddress, err)
 		bn.peerManager.RemovePeer(peerAddress)
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Failed to send blockchain to %s: Status %d", peerAddress, resp.StatusCode)
+		log.Printf("Failed to send chain to %s: Status %d", peerAddress, resp.StatusCode)
 	}
 }
 
@@ -71,7 +71,7 @@ func (bn *BlockchainNetwork) StartServer(listenAddress string) error {
 	defer cancel()
 	bn.peerManager.DiscoverPeers(ctx)
 
-	log.Printf("Starting blockchain network server on %s", listenAddress)
+	log.Printf("Starting chain network server on %s", listenAddress)
 	return http.ListenAndServe(listenAddress, nil)
 }
 
@@ -88,7 +88,7 @@ func (bn *BlockchainNetwork) receiveBlockchainHandler(w http.ResponseWriter, r *
 	}
 
 	if !bn.validateBlockchain(body) {
-		http.Error(w, "Invalid blockchain", http.StatusBadRequest)
+		http.Error(w, "Invalid chain", http.StatusBadRequest)
 		return
 	}
 
