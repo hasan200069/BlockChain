@@ -40,40 +40,54 @@ func (cm *ConsensusManager) ValidateAndSyncBlockchain(nodeID string, newBlockcha
     cm.mu.Lock()
     defer cm.mu.Unlock()
 
-    fmt.Printf("\n[CONSENSUS] Node %s attempting to validate blockchain\n", nodeID)
+    fmt.Printf("\n[CONSENSUS] Node %s validating blockchain\n", nodeID)
     
-    receivedBlockchain, err := blockchainFromBytes(newBlockchainBytes)
-    if err != nil {
-        fmt.Printf("[CONSENSUS ERROR] Invalid blockchain format: %v\n", err)
+    var receivedBlockchain blockchain.Blockchain
+    if err := json.Unmarshal(newBlockchainBytes, &receivedBlockchain); err != nil {
         return fmt.Errorf("invalid blockchain format: %v", err)
     }
 
-    fmt.Printf("[CONSENSUS] Checking blockchain integrity...\n")
-    if err := cm.validateBlockchainIntegrity(receivedBlockchain); err != nil {
-        fmt.Printf("[CONSENSUS ERROR] Blockchain integrity check failed: %v\n", err)
+    // For new nodes or initial blocks
+    if len(receivedBlockchain.Blocks) == 0 {
+        if _, exists := cm.blockchains[nodeID]; !exists {
+            cm.blockchains[nodeID] = &receivedBlockchain
+        }
+        return nil
+    }
+
+    // Validate blockchain integrity
+    if err := cm.validateBlockchainIntegrity(&receivedBlockchain); err != nil {
         return fmt.Errorf("blockchain integrity check failed: %v", err)
     }
 
-    fmt.Printf("[CONSENSUS] Blockchain passed integrity check\n")
-    if currentBC, exists := cm.blockchains[nodeID]; exists {
-        fmt.Printf("[CONSENSUS] Current chain length: %d, Received chain length: %d\n",
-            len(currentBC.Blocks), len(receivedBlockchain.Blocks))
+    currentBC, exists := cm.blockchains[nodeID]
+    if !exists || len(receivedBlockchain.Blocks) > len(currentBC.Blocks) {
+        cm.blockchains[nodeID] = &receivedBlockchain
+        fmt.Printf("[CONSENSUS] Blockchain updated for node %s, length: %d\n", 
+            nodeID, len(receivedBlockchain.Blocks))
+        return nil
     }
 
-    return cm.resolveConflict(nodeID, receivedBlockchain)
+    return nil
 }
 
 func (cm *ConsensusManager) validateBlockchainIntegrity(bc *blockchain.Blockchain) error {
+    // It's valid to have just one block (genesis block)
     if len(bc.Blocks) == 0 {
-        return errors.New("empty blockchain")
+        return nil
     }
 
+    // Validate chain of blocks
     for i := 1; i < len(bc.Blocks); i++ {
         currentBlock := bc.Blocks[i]
-        prevBlock := bc.Blocks[i-1]
-        if currentBlock.PreviousHash != prevBlock.Hash {
+        previousBlock := bc.Blocks[i-1]
+
+        // Verify previous hash
+        if currentBlock.PreviousHash != previousBlock.Hash {
             return fmt.Errorf("invalid previous hash at block %d", i)
         }
+
+        // Verify proof of work
         if !cm.verifyProofOfWork(currentBlock) {
             return fmt.Errorf("invalid proof of work at block %d", i)
         }

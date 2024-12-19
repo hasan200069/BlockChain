@@ -55,11 +55,7 @@ func (bp *BlockPropagator) PropagateNewBlock(block *blockchain.Block) error {
         return fmt.Errorf("failed to marshal block message: %v", err)
     }
 
-    // Validate through consensus before propagating
-    err = bp.consensusValidator.HandleBlockchainSync(bp.nodeID, messageJSON)
-    if err != nil {
-        return fmt.Errorf("consensus validation failed: %v", err)
-    }
+    fmt.Printf("[PROPAGATOR] Propagating block number %d to peers\n", message.BlockNumber)
 
     var wg sync.WaitGroup
     peers := bp.peerManager.GetPeers()
@@ -68,7 +64,11 @@ func (bp *BlockPropagator) PropagateNewBlock(block *blockchain.Block) error {
         wg.Add(1)
         go func(peerAddr string) {
             defer wg.Done()
-            bp.sendBlockToPeer(peerAddr, messageJSON)
+            if err := bp.sendBlockToPeer(peerAddr, messageJSON); err != nil {
+                fmt.Printf("[PROPAGATOR] Failed to send block to %s: %v\n", peerAddr, err)
+            } else {
+                fmt.Printf("[PROPAGATOR] Successfully sent block to %s\n", peerAddr)
+            }
         }(peer)
     }
 
@@ -76,13 +76,12 @@ func (bp *BlockPropagator) PropagateNewBlock(block *blockchain.Block) error {
     return nil
 }
 
-func (bp *BlockPropagator) sendBlockToPeer(peerAddr string, blockData []byte) {
+func (bp *BlockPropagator) sendBlockToPeer(peerAddr string, blockData []byte) error {
     url := fmt.Sprintf("http://%s/receive-block", peerAddr)
     
     req, err := http.NewRequest("POST", url, bytes.NewBuffer(blockData))
     if err != nil {
-        fmt.Printf("Error creating request for peer %s: %v\n", peerAddr, err)
-        return
+        return fmt.Errorf("error creating request: %v", err)
     }
     
     req.Header.Set("Content-Type", "application/json")
@@ -90,16 +89,17 @@ func (bp *BlockPropagator) sendBlockToPeer(peerAddr string, blockData []byte) {
     client := &http.Client{Timeout: 10 * time.Second}
     resp, err := client.Do(req)
     if err != nil {
-        fmt.Printf("Error sending block to peer %s: %v\n", peerAddr, err)
         bp.peerManager.RemovePeer(peerAddr)
-        return
+        return fmt.Errorf("error sending block: %v", err)
     }
     defer resp.Body.Close()
 
+    body, _ := ioutil.ReadAll(resp.Body)
     if resp.StatusCode != http.StatusOK {
-        body, _ := ioutil.ReadAll(resp.Body)
-        fmt.Printf("Peer %s rejected block: %s\n", peerAddr, string(body))
+        return fmt.Errorf("peer rejected block: %s", string(body))
     }
+
+    return nil
 }
 
 func (bp *BlockPropagator) HandleIncomingBlock(blockData []byte) error {
@@ -116,21 +116,24 @@ func (bp *BlockPropagator) HandleIncomingBlock(blockData []byte) error {
     bp.processedMessages[message.MessageID] = true
     bp.mu.Unlock()
 
-    // Validate through consensus
-    if err := bp.consensusValidator.HandleBlockchainSync(bp.nodeID, blockData); err != nil {
-        return fmt.Errorf("consensus validation failed: %v", err)
-    }
+    fmt.Printf("[PROPAGATOR] Received new block %d from node %s\n", message.BlockNumber, message.NodeID)
 
-    // Additional block validation
+    // Validate the block
     if err := bp.validateBlock(message.Block); err != nil {
         return fmt.Errorf("block validation failed: %v", err)
     }
 
-    // Add the block to blockchain
-    bp.blockchain.Blocks = append(bp.blockchain.Blocks, message.Block)
+    // Add block to blockchain
+    if err := bp.blockchain.AddBlock(message.Block); err != nil {
+        return fmt.Errorf("failed to add block: %v", err)
+    }
+
+    fmt.Printf("[PROPAGATOR] Successfully added block %d to blockchain\n", message.BlockNumber)
 
     // Propagate to other peers
-    go bp.propagateToOthers(blockData, message.NodeID)
+    if message.NodeID != bp.nodeID {
+        go bp.propagateToOthers(blockData, message.NodeID)
+    }
 
     return nil
 }
@@ -149,6 +152,7 @@ func (bp *BlockPropagator) validateBlock(block *blockchain.Block) error {
         return fmt.Errorf("invalid proof of work")
     }
 
+    // Validate transactions
     for _, tx := range block.Data.Transactions {
         if err := tx.Verify(); err != nil {
             return fmt.Errorf("invalid transaction: %v", err)
@@ -170,7 +174,9 @@ func (bp *BlockPropagator) propagateToOthers(blockData []byte, senderID string) 
         wg.Add(1)
         go func(peerAddr string) {
             defer wg.Done()
-            bp.sendBlockToPeer(peerAddr, blockData)
+            if err := bp.sendBlockToPeer(peerAddr, blockData); err != nil {
+                fmt.Printf("[PROPAGATOR] Failed to propagate block to %s: %v\n", peerAddr, err)
+            }
         }(peer)
     }
 
