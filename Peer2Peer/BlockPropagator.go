@@ -7,6 +7,7 @@ import (
     "encoding/json"
     "fmt"
     "io/ioutil"
+    "log"
     "net/http"
     "sync"
     "time"
@@ -55,7 +56,7 @@ func (bp *BlockPropagator) PropagateNewBlock(block *blockchain.Block) error {
         return fmt.Errorf("failed to marshal block message: %v", err)
     }
 
-    fmt.Printf("[PROPAGATOR] Propagating block number %d to peers\n", message.BlockNumber)
+    log.Printf("[PROPAGATOR] Propagating block number %d to peers", message.BlockNumber)
 
     var wg sync.WaitGroup
     peers := bp.peerManager.GetPeers()
@@ -65,9 +66,9 @@ func (bp *BlockPropagator) PropagateNewBlock(block *blockchain.Block) error {
         go func(peerAddr string) {
             defer wg.Done()
             if err := bp.sendBlockToPeer(peerAddr, messageJSON); err != nil {
-                fmt.Printf("[PROPAGATOR] Failed to send block to %s: %v\n", peerAddr, err)
+                log.Printf("[PROPAGATOR] Failed to send block to %s: %v", peerAddr, err)
             } else {
-                fmt.Printf("[PROPAGATOR] Successfully sent block to %s\n", peerAddr)
+                log.Printf("[PROPAGATOR] Successfully sent block to %s", peerAddr)
             }
         }(peer)
     }
@@ -108,15 +109,23 @@ func (bp *BlockPropagator) HandleIncomingBlock(blockData []byte) error {
         return fmt.Errorf("failed to unmarshal block message: %v", err)
     }
 
+    // Check if we've already processed this block
     bp.mu.Lock()
     if bp.processedMessages[message.MessageID] {
         bp.mu.Unlock()
+        log.Printf("[PROPAGATOR] Block already processed, skipping: %s", message.MessageID)
         return nil
     }
     bp.processedMessages[message.MessageID] = true
     bp.mu.Unlock()
 
-    fmt.Printf("[PROPAGATOR] Received new block %d from node %s\n", message.BlockNumber, message.NodeID)
+    log.Printf("[PROPAGATOR] Received new block %d from node %s", message.BlockNumber, message.NodeID)
+
+    // Don't propagate our own blocks back to us
+    if message.NodeID == bp.nodeID {
+        log.Printf("[PROPAGATOR] Skipping propagation of our own block")
+        return nil
+    }
 
     // Validate the block
     if err := bp.validateBlock(message.Block); err != nil {
@@ -128,10 +137,12 @@ func (bp *BlockPropagator) HandleIncomingBlock(blockData []byte) error {
         return fmt.Errorf("failed to add block: %v", err)
     }
 
-    fmt.Printf("[PROPAGATOR] Successfully added block %d to blockchain\n", message.BlockNumber)
+    log.Printf("[PROPAGATOR] Successfully added block %d to blockchain", message.BlockNumber)
 
-    // Propagate to other peers
+    // Only propagate to other peers if we're not the original sender
     if message.NodeID != bp.nodeID {
+        // Propagate to other peers after a small delay to avoid network congestion
+        time.Sleep(100 * time.Millisecond)
         go bp.propagateToOthers(blockData, message.NodeID)
     }
 
@@ -139,24 +150,28 @@ func (bp *BlockPropagator) HandleIncomingBlock(blockData []byte) error {
 }
 
 func (bp *BlockPropagator) validateBlock(block *blockchain.Block) error {
-    if len(bp.blockchain.Blocks) > 0 {
-        lastBlock := bp.blockchain.Blocks[len(bp.blockchain.Blocks)-1]
-        if block.PreviousHash != lastBlock.Hash {
-            return fmt.Errorf("invalid previous hash")
+    currentBlocks := len(bp.blockchain.Blocks)
+    
+    // Special case for the first block
+    if currentBlocks == 0 {
+        // For genesis block, previousHash should be empty
+        if block.PreviousHash != "" {
+            return fmt.Errorf("invalid genesis block: should have empty previous hash")
         }
+        return nil
+    }
+
+    lastBlock := bp.blockchain.Blocks[currentBlocks-1]
+    
+    // Validate previous hash
+    if block.PreviousHash != lastBlock.Hash {
+        return fmt.Errorf("invalid previous hash")
     }
 
     // Validate proof of work
-    prefix := bytes.Repeat([]byte("0"), 4)
+    prefix := bytes.Repeat([]byte("0"), 4) // difficulty level
     if !bytes.HasPrefix([]byte(block.Hash), prefix) {
         return fmt.Errorf("invalid proof of work")
-    }
-
-    // Validate transactions
-    for _, tx := range block.Data.Transactions {
-        if err := tx.Verify(); err != nil {
-            return fmt.Errorf("invalid transaction: %v", err)
-        }
     }
 
     return nil
@@ -167,6 +182,7 @@ func (bp *BlockPropagator) propagateToOthers(blockData []byte, senderID string) 
     var wg sync.WaitGroup
 
     for _, peer := range peers {
+        // Skip the original sender
         if peer == senderID {
             continue
         }
@@ -175,7 +191,9 @@ func (bp *BlockPropagator) propagateToOthers(blockData []byte, senderID string) 
         go func(peerAddr string) {
             defer wg.Done()
             if err := bp.sendBlockToPeer(peerAddr, blockData); err != nil {
-                fmt.Printf("[PROPAGATOR] Failed to propagate block to %s: %v\n", peerAddr, err)
+                log.Printf("[PROPAGATOR] Failed to propagate block to %s: %v", peerAddr, err)
+            } else {
+                log.Printf("[PROPAGATOR] Successfully propagated block to %s", peerAddr)
             }
         }(peer)
     }

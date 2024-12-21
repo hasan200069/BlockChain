@@ -6,10 +6,13 @@ import (
     "encoding/hex"
     "encoding/json"
     "fmt"
+    "sort"
+    "sync/atomic"
     "time"
 )
 
-
+// Global sequence counter for transactions
+var globalSequence uint64
 
 // Transaction status constants
 const (
@@ -21,6 +24,7 @@ const (
 // Enhanced Transaction structure
 type Transaction struct {
     TransactionID string    `json:"transaction_id"`
+    Sequence      uint64    `json:"sequence"`      // Added field for serialization
     Timestamp     time.Time `json:"timestamp"`
     Sender        string    `json:"sender"`
     Receiver      string    `json:"receiver"`
@@ -35,23 +39,23 @@ type Transaction struct {
     ActualOutput  string    `json:"actual_output"`
 }
 
-
-
-
 // TransactionPool manages pending transactions
 type TransactionPool struct {
     PendingTransactions map[string]*Transaction
 }
 
-// Create a new transaction
+// Create a new transaction with sequence number
 func CreateTransaction(sender, receiver string, amount int) (*Transaction, error) {
+    sequence := atomic.AddUint64(&globalSequence, 1)
+    
     tx := &Transaction{
         TransactionID: generateTransactionID(),
-        Timestamp:     time.Now(),
-        Sender:        sender,
-        Receiver:      receiver,
-        Amount:        amount,
-        Status:        StatusPending,
+        Sequence:     sequence,
+        Timestamp:    time.Now(),
+        Sender:       sender,
+        Receiver:     receiver,
+        Amount:       amount,
+        Status:       StatusPending,
     }
     return tx, nil
 }
@@ -84,7 +88,7 @@ func (tx *Transaction) Sign(privateKey *ecdsa.PrivateKey) error {
     return nil
 }
 
-// Verify transaction signature
+// Verify transaction signature and data
 func (tx *Transaction) Verify() error {
     // Basic validation
     if tx.Amount <= 0 {
@@ -92,6 +96,11 @@ func (tx *Transaction) Verify() error {
     }
     if tx.Sender == "" || tx.Receiver == "" {
         return fmt.Errorf("invalid sender or receiver")
+    }
+    
+    // Verify sequence number is set
+    if tx.Sequence == 0 {
+        return fmt.Errorf("transaction sequence number not set")
     }
     
     // More validations can be added here
@@ -105,6 +114,18 @@ func (tx *Transaction) getSigningData() ([]byte, error) {
     txCopy := *tx
     txCopy.Signature = nil
     return json.Marshal(txCopy)
+}
+
+// Implement custom sorting for transactions
+type TransactionSlice []*Transaction
+
+func (s TransactionSlice) Len() int { return len(s) }
+func (s TransactionSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s TransactionSlice) Less(i, j int) bool {
+    if s[i].Timestamp.Equal(s[j].Timestamp) {
+        return s[i].Sequence < s[j].Sequence
+    }
+    return s[i].Timestamp.Before(s[j].Timestamp)
 }
 
 // TransactionPool methods
@@ -135,11 +156,13 @@ func (pool *TransactionPool) RemoveTransaction(txID string) {
     delete(pool.PendingTransactions, txID)
 }
 
-// Get all pending transactions
+// Get all pending transactions in sequence order
 func (pool *TransactionPool) GetPendingTransactions() []*Transaction {
-    transactions := make([]*Transaction, 0, len(pool.PendingTransactions))
+    transactions := make(TransactionSlice, 0, len(pool.PendingTransactions))
     for _, tx := range pool.PendingTransactions {
         transactions = append(transactions, tx)
     }
+    // Sort by timestamp and sequence before returning
+    sort.Sort(transactions)
     return transactions
 }
