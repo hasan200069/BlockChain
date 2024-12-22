@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IPFS File Upload</title>
+</head>
+<body>
+    <h1>Upload Algorithm and Dataset</h1>
+    <form id="uploadForm">
+        <label for="algorithmFile">Algorithm File:</label>
+        <input type="file" id="algorithmFile" required><br><br>
+
+        <label for="datasetFile">Dataset File:</label>
+        <input type="file" id="datasetFile" required><br><br>
+
+        <button type="submit">Upload</button>
+    </form>
+
+    <div id="status"></div>
+
+    <script>
+        document.getElementById('uploadForm').onsubmit = async function(e) {
+            e.preventDefault();
+            
+            const algorithmFile = document.getElementById('algorithmFile').files[0];
+            const datasetFile = document.getElementById('datasetFile').files[0];
+
+            if (!algorithmFile || !datasetFile) {
+                alert('Please upload both files.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('algorithm', algorithmFile);
+            formData.append('dataset', datasetFile);
+
+            try {
+                const response = await fetch('/upload-to-ipfs', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                document.getElementById('status').innerText = `Upload successful! Algorithm CID: ${result.algorithm_cid}, Dataset CID: ${result.dataset_cid}`;
+            } catch (error) {
+                document.getElementById('status').innerText = 'Upload failed!';
+                console.error('Error uploading files:', error);
+            }
+        }
+    </script>
+</body>
+</html>
