@@ -146,40 +146,58 @@ func main() {
     }()
 
     // Add HTTP endpoints for transaction handling
-	http.HandleFunc("/submit-transaction", func(w http.ResponseWriter, r *http.Request) {
-	    if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	    }
+http.HandleFunc("/submit-transaction", func(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodPost {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
 
-	    // Create a temporary struct to hold the input data
-	    var input struct {
-		Sender   string `json:"sender"`
-		Receiver string `json:"receiver"`
-		Amount   int    `json:"amount"`
-	    }
+    var input struct {
+        Sender     string   `json:"sender"`
+        Receiver   string   `json:"receiver"`
+        Amount     int      `json:"amount"`
+        Fee        int      `json:"fee"`
+        Nonce      uint64   `json:"nonce"`
+        InputRefs  []string `json:"input_refs"`
+    }
 
-	    if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid transaction data: %v", err), http.StatusBadRequest)
-		return
-	    }
+    if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+        http.Error(w, fmt.Sprintf("Invalid transaction data: %v", err), http.StatusBadRequest)
+        return
+    }
 
-	    // Create a new transaction using the CreateTransaction function
-	    tx, err := blockchain.CreateTransaction(input.Sender, input.Receiver, input.Amount)
-	    if err != nil {
-		http.Error(w, fmt.Sprintf("Failed to create transaction: %v", err), http.StatusBadRequest)
-		return
-	    }
+    // Log received input
+    fmt.Printf("[DEBUG] Received transaction request: sender=%s, input_refs=%v\n", 
+        input.Sender, input.InputRefs)
 
-	    status, err := txHandler.SubmitTransaction(tx)
-	    if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	    }
+    // Create a new transaction
+    tx, err := blockchain.CreateTransaction(
+        input.Sender,
+        input.Receiver,
+        input.Amount,
+        input.Fee,
+        input.Nonce,
+    )
+    if err != nil {
+        http.Error(w, fmt.Sprintf("Failed to create transaction: %v", err), http.StatusBadRequest)
+        return
+    }
 
-	    w.Header().Set("Content-Type", "application/json")
-	    json.NewEncoder(w).Encode(status)
-	})
+    // Set the input references
+    tx.InputRefs = input.InputRefs
+    
+    fmt.Printf("[DEBUG] Created transaction with ID %s and input_refs=%v\n", 
+        tx.TransactionID, tx.InputRefs)
+
+    status, err := txHandler.SubmitTransaction(tx)
+    if err != nil {
+        http.Error(w, err.Error(), http.StatusBadRequest)
+        return
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(status)
+})
 
     http.HandleFunc("/transaction-status", func(w http.ResponseWriter, r *http.Request) {
         txID := r.URL.Query().Get("id")
@@ -217,6 +235,63 @@ func main() {
         w.Header().Set("Content-Type", "application/json")
         json.NewEncoder(w).Encode(status)
     })
+    
+    // Add this endpoint in main.go
+http.HandleFunc("/blockchain", func(w http.ResponseWriter, r *http.Request) {
+    if r.Method != http.MethodGet {
+        http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+        return
+    }
+
+    type BlockResponse struct {
+        Height       int       `json:"height"`
+        Hash         string    `json:"hash"`
+        PreviousHash string    `json:"previous_hash"`
+        Timestamp    time.Time `json:"timestamp"`
+        Transactions []struct {
+            ID     string `json:"id"`
+            Sender string `json:"sender"`
+            Fee    int    `json:"fee"`
+            Amount int    `json:"amount"`
+        } `json:"transactions"`
+    }
+
+    var response []BlockResponse
+
+    for i, block := range bc.Blocks {
+        var txs []struct {
+            ID     string `json:"id"`
+            Sender string `json:"sender"`
+            Fee    int    `json:"fee"`
+            Amount int    `json:"amount"`
+        }
+
+        for _, tx := range block.Data.Transactions {
+            txs = append(txs, struct {
+                ID     string `json:"id"`
+                Sender string `json:"sender"`
+                Fee    int    `json:"fee"`
+                Amount int    `json:"amount"`
+            }{
+                ID:     tx.TransactionID,
+                Sender: tx.Sender,
+                Fee:    tx.Fee,
+                Amount: tx.Amount,
+            })
+        }
+
+        response = append(response, BlockResponse{
+            Height:       i + 1,
+            Hash:         block.Hash,
+            PreviousHash: block.PreviousHash,
+            Timestamp:    block.Timestamp,
+            Transactions: txs,
+        })
+    }
+
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(response)
+})
 
     log.Printf("Node %s running on port %d", *nodeID, *port)
     if *bootstrapNode != "" {
