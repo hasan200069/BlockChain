@@ -110,3 +110,10 @@ func (pm *PeerManager) sendDiscoveryBroadcast(broadcastIP net.IP) {
 		log.Println("Error sending discovery message:", err)
 	}
 }
+
+func (pm *PeerManager) IsPeerRegistered(address string) bool {
+    pm.peerMutex.RLock()
+    defer pm.peerMutex.RUnlock()
+    _, exists := pm.peers[address]
+    return exists
+}
